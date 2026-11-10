@@ -1,0 +1,10 @@
+name: DSS circle-overlap regression (Kentland test environment)
+resources:
+  dss: resources.astm.f3548.v21.DSSInstanceResource
+  id_generator: resources.interuss.IDGeneratorResource
+actions:
+  - test_scenario:
+      scenario_type: scenarios.astm.utm.dss.OIRCircleOverlap
+      resources:
+        dss: dss
+        id_generator: id_generator
