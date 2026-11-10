@@ -38,6 +38,8 @@ class OIRCircleOverlap(TestScenario):
     # Primary covers ~3.8 km², below the 2,500 km² OIR area limit.
     _PRIMARY = Circle.from_meters(37.2010000000, -80.5760000000, 1100)
     _QUERY = Circle.from_meters(37.2001131858, -80.5883072609, 1)
+    _FAR = Circle.from_meters(37.201, -80.546, 1)
+    _INSIDE = Circle.from_meters(37.201, -80.576, 200)
 
     _dss: DSSInstance
 
@@ -79,31 +81,88 @@ class OIRCircleOverlap(TestScenario):
         )
         self.end_test_step()
 
-        self.begin_test_step("Search with small overlapping circle")
-        query = Volume4D.from_values(
-            t0=start, t1=end, alt0=30, alt1=120, circle=self._QUERY
-        ).to_f3548v21()
-        with self.check("Overlapping circle query finds the OIR", self._pid) as check:
-            try:
-                found, response = self._dss.find_op_intent(query)
-                self.record_query(response)
-                if self._oir_id not in {oir.id for oir in found}:
+        cases = [
+            (
+                "Boundary overlap is discoverable",
+                self._QUERY,
+                start,
+                end,
+                30,
+                120,
+                True,
+            ),
+            (
+                "Distant circle does not match",
+                self._FAR,
+                start,
+                end,
+                30,
+                120,
+                False,
+            ),
+            (
+                "Disjoint altitude does not match",
+                self._QUERY,
+                start,
+                end,
+                250,
+                350,
+                False,
+            ),
+            (
+                "Disjoint time does not match",
+                self._QUERY,
+                end + timedelta(minutes=10),
+                end + timedelta(minutes=40),
+                30,
+                120,
+                False,
+            ),
+            (
+                "Ordinary contained circle is discoverable",
+                self._INSIDE,
+                start,
+                end,
+                30,
+                120,
+                True,
+            ),
+        ]
+        for title, circle, t0, t1, alt0, alt1, expected in cases:
+            self.begin_test_step(title)
+            query = Volume4D.from_values(
+                t0=t0, t1=t1, alt0=alt0, alt1=alt1, circle=circle
+            ).to_f3548v21()
+            with self.check(title, self._pid) as check:
+                try:
+                    found, response = self._dss.find_op_intent(query)
+                    self.record_query(response)
+                    ids = {oir.id for oir in found}
+                    actual = self._oir_id in ids
+                    if actual != expected:
+                        check.record_failed(
+                            summary=(
+                                "Overlapping OIR was missing"
+                                if expected
+                                else "OIR was returned for a disjoint 4D query"
+                            ),
+                            details=(
+                                f"Case: {title}; expected_found={expected}; "
+                                f"actual_found={actual}; expected_id={self._oir_id}; "
+                                f"returned_ids={sorted(ids)}; "
+                                f"query_time=[{t0.isoformat()}, {t1.isoformat()}]; "
+                                f"query_altitude_m=[{alt0}, {alt1}]"
+                            ),
+                            query_timestamps=[response.request.timestamp],
+                        )
+                except QueryError as e:
+                    self.record_queries(e.queries)
                     check.record_failed(
-                        summary="Overlapping OIR was missing from the search",
-                        details=(
-                            "An OIR with a 1.1 km circular extent was not returned for "
-                            "a geographically overlapping 1 m query circle."
-                        ),
-                        query_timestamps=[response.request.timestamp],
+                        summary=f"Search failed: {title}",
+                        details=f"HTTP {e.cause_status_code}: {e.msg}",
+                        query_timestamps=e.query_timestamps,
                     )
-            except QueryError as e:
-                self.record_queries(e.queries)
-                check.record_failed(
-                    summary="Could not search for overlapping OIR",
-                    details=e.msg,
-                    query_timestamps=e.query_timestamps,
-                )
-        self.end_test_step()
+            self.end_test_step()
 
         self.begin_test_step("Delete large circular OIR")
         oir_fragments.delete_oir_query(
