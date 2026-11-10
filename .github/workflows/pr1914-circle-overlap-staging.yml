@@ -1,0 +1,59 @@
+name: PR 1914 circle-overlap staging validation
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - staging/pr-1914-circle-overlap
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python test and developer dependencies
+        run: uv sync --locked --no-install-project --group dev
+      - name: Validate scenario format, import and documentation
+        run: |
+          uv run --no-sync ruff format --check monitoring/uss_qualifier/scenarios/astm/utm/dss/oir_circle_overlap.py
+          uv run --no-sync ruff check monitoring/uss_qualifier/scenarios/astm/utm/dss/oir_circle_overlap.py
+          uv run --no-sync python -c 'from monitoring.uss_qualifier.scenarios.astm.utm.dss import OIRCircleOverlap; print(OIRCircleOverlap.__name__)'
+          (cd monitoring/uss_qualifier && PYTHONPATH=../.. ../../.venv/bin/python scenarios/documentation/validate_documentation.py)
+      - uses: actions/checkout@v4
+        with:
+          repository: Johnny-Kao/dss
+          ref: staging/pr-1914-review-final
+          path: fixed-dss
+      - name: Build tested DSS fix
+        run: docker build --tag local/dss:pr1914-fixed fixed-dss
+      - name: Select dedicated circle-overlap suite in disposable runner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("monitoring/uss_qualifier/configurations/dev/f3548_self_contained.yaml")
+          original=p.read_text().replace("suite_type: suites.astm.utm.f3548_21","suite_type: suites.astm.utm.dss_circle_overlap",1)
+          assert "  validation:\n" in original
+          original=original.split("  validation:\n",1)[0]
+          original+="  validation:\n    criteria:\n      - applicability:\n          test_scenarios: {}\n        pass_condition:\n          each_element:\n            has_execution_error: false\n      - applicability:\n          failed_checks:\n            has_severity:\n              higher_than: Low\n        pass_condition:\n          elements:\n            count:\n              equal_to: 0\n"
+          p.write_text(original)
+          PY
+      - name: Real DSS HTTP API green regression
+        env:
+          CONFIG_NAME: configurations.dev.f3548_self_contained
+          DSS_IMAGE: local/dss:pr1914-fixed
+          CI: 'true'
+        run: make -C monitoring/uss_qualifier test
+      - name: Save API reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr1914-monitoring-staging-reports
+          path: |
+            monitoring/uss_qualifier/output
+            logs
+            monitoring/mock_uss/output
+          if-no-files-found: ignore
