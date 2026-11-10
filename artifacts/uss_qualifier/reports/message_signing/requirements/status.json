@@ -1,0 +1,11 @@
+{
+  "test_run_information": {
+    "test_run_id": "6fa46fdbdf9afc17571ebb3fba84a17cf1a8191d07f7ef7a929bc93cd8b72169",
+    "start_time": "2026-11-10 07:41:23 UTC",
+    "end_time": "2026-11-10 07:42:32 UTC",
+    "baseline": "80ecf0dd79f1bfaec2004869551ae0d1f23bbb1a5fff11f6697d671d97c9be9e",
+    "environment": "c3fcf117306f2496f691ace7184a78270bc45e011df50b54ccdd666c9cd67b70"
+  },
+  "participant_verifications": {},
+  "artifact_configuration": "requirements"
+}
