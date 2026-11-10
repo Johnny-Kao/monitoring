@@ -6,10 +6,13 @@ Tests the DSS operational intent reference search API when a small query circle
 overlaps a larger registered circle close to its boundary. This is an HTTP-level
 regression for the false negative fixed in interuss/dss#1914.
 
-The coordinates are an intentionally fixed, previously verified regression
-fixture. Both circles are within the default Kentland planning-area rectangle; the
-1.1 km reference circle is below the maximum allowed area. Run against a test DSS that accepts this
-geographical area. The test varies horizontal location, altitude and time independently. Positive and negative controls ensure the search is neither always empty nor always inclusive.
+The fixed coordinates reproduce interuss/dss#1914 in the default Kentland
+planning area. All query circles fit within that area; the 1.1 km OIR circle
+is below the maximum allowed area. Run only against a test DSS that supports
+Kentland. Moving the fixture may remove the S2 boundary regression.
+
+The five queries vary horizontal position, altitude or time. Positive and
+negative controls catch searches that always return nothing or everything.
 
 ## Resources
 
