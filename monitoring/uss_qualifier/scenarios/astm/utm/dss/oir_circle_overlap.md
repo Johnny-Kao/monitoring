@@ -6,13 +6,18 @@ Tests the DSS operational intent reference search API when a small query circle
 overlaps a larger registered circle close to its boundary. This is an HTTP-level
 regression for the false negative fixed in interuss/dss#1914.
 
-The fixed coordinates reproduce interuss/dss#1914 in the default Kentland
-planning area. All query circles fit within that area; the 1.1 km OIR circle
-is below the maximum allowed area. Run only against a test DSS that supports
-Kentland. Moving the fixture may remove the S2 boundary regression.
+The scenario places four circular references relative to the configured
+PlanningAreaResource, without requiring Kentland GPS coordinates. Each reference
+is searched with four overlapping 1 m circles near its boundary; other queries
+verify horizontal separation, altitude, time, and ordinary overlap.
 
-The five queries vary horizontal position, altitude or time. Positive and
-negative controls catch searches that always return nothing or everything.
+The four geometry patterns were checked against the actual old 20-gon S2
+covering and the fixed S2 Cap covering in five translated planning areas.
+At least one boundary query reproduces the old false negative in each area.
+The test requires sufficient horizontal room for its circles and controls;
+areas that are too small fail explicitly rather than silently passing.
+A geographical setting not covered by those five research areas is still
+tested for correct behavior, but a failure of the old code is not guaranteed.
 
 ## Resources
 
@@ -24,6 +29,11 @@ create, search, and delete operational intent references.
 ### id_generator
 
 An `IDGeneratorResource` supplying a dedicated test OIR ID.
+
+### planning_area
+
+A `PlanningAreaResource` used to place the test circles inside the current
+DSS test environment.
 
 ## Setup test case
 
@@ -45,8 +55,8 @@ A test-owned OIR must be removable by ID and correct OVN under
 
 ### Create large circular OIR test step
 
-Create an accepted OIR with a 1,100 m circular footprint and matching
-time and altitude bounds.
+Create an accepted circular OIR (700–1,100 m radius) with matching time
+and altitude bounds. Repeat for each of the four relative geometry patterns.
 
 #### 🛑 Create operational intent reference query succeeds check
 
@@ -54,7 +64,8 @@ Valid OIR creation must succeed under **[astm.f3548.v21.DSS0005,1](../../../../r
 
 ### Boundary overlap is discoverable test step
 
-A 1 m circle near the outer boundary of the registered 1.1 km circle intersects the OIR in space, altitude and time; it must be found.
+Four 1 m circles overlapping the boundary of the registered circle must
+each find the OIR. The time and altitude intervals also overlap.
 
 #### 🛑 Boundary overlap is discoverable check
 

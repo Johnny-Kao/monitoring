@@ -23,6 +23,19 @@ jobs:
           uv run --no-sync ruff check monitoring/uss_qualifier/scenarios/astm/utm/dss/oir_circle_overlap.py
           uv run --no-sync python -c 'from monitoring.uss_qualifier.scenarios.astm.utm.dss import OIRCircleOverlap; print(OIRCircleOverlap.__name__)'
           (cd monitoring/uss_qualifier && PYTHONPATH=../.. ../../.venv/bin/python scenarios/documentation/validate_documentation.py)
+      - name: Verify official DSS probing suite registration
+        run: |
+          uv run --no-sync python - <<'PY'
+          import yaml
+          from pathlib import Path
+          from monitoring.uss_qualifier.scenarios.astm.utm.dss import OIRCircleOverlap
+          suite=yaml.safe_load(Path("monitoring/uss_qualifier/suites/astm/utm/dss_probing.yaml").read_text())
+          matched=[a["test_scenario"] for a in suite["actions"] if a.get("test_scenario",{}).get("scenario_type")=="scenarios.astm.utm.dss.OIRCircleOverlap"]
+          assert len(matched)==1
+          assert matched[0]["resources"]=={"dss":"dss","id_generator":"id_generator","planning_area":"planning_area"}
+          assert all(r in suite["resources"] for r in matched[0]["resources"])
+          print("Registered in official DSS probing:", OIRCircleOverlap.__name__)
+          PY
       - uses: actions/checkout@v4
         with:
           repository: Johnny-Kao/dss
@@ -36,6 +49,7 @@ jobs:
           from pathlib import Path
           p=Path("monitoring/uss_qualifier/configurations/dev/f3548_self_contained.yaml")
           original=p.read_text().replace("suite_type: suites.astm.utm.f3548_21","suite_type: suites.astm.utm.dss_circle_overlap",1)
+          original=original.replace("          id_generator: id_generator\n", "          id_generator: id_generator\n          planning_area: planning_area\n",1)
           assert "  validation:\n" in original
           original=original.split("  validation:\n",1)[0]
           original+="  validation:\n    criteria:\n      - applicability:\n          test_scenarios: {}\n        pass_condition:\n          each_element:\n            has_execution_error: false\n      - applicability:\n          failed_checks:\n            has_severity:\n              higher_than: Low\n        pass_condition:\n          elements:\n            count:\n              equal_to: 0\n"
