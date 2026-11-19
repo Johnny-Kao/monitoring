@@ -1,0 +1,88 @@
+name: Staging PR1911 DSS v0.24.0 five-config verification
+on:
+  push:
+    branches:
+      - staging/pr-1911-dss-v024-ci
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: true
+          fetch-tags: true
+          fetch-depth: 0
+          filter: tree:0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.14'
+      - run: |
+          make image
+          make image-dev
+          docker save interuss/monitoring interuss/monitoring-dev -o monitoring-image.tar
+          mkdir -p image-artifact/monitoring
+          mv monitoring-image.tar image-artifact/
+          cp monitoring/image image-artifact/monitoring/
+          cp monitoring/image-dev image-artifact/monitoring/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: monitoring-docker-image
+          path: image-artifact
+  dss_probing:
+    needs: build
+    uses: ./.github/workflows/monitoring-test.yml
+    with:
+      name: staging-dss-v024-dss_probing
+      script: |
+        export DSS_IMAGE=interuss/dss:v0.24.0
+        export CONFIG_NAME=configurations.dev.dss_probing
+        cd monitoring/uss_qualifier
+        make test
+
+  f3548_self_contained:
+    needs: build
+    uses: ./.github/workflows/monitoring-test.yml
+    with:
+      name: staging-dss-v024-f3548_self_contained
+      script: |
+        export DSS_IMAGE=interuss/dss:v0.24.0
+        export CONFIG_NAME=configurations.dev.f3548_self_contained
+        cd monitoring/uss_qualifier
+        make test
+
+  utm_implementation_us:
+    needs: build
+    uses: ./.github/workflows/monitoring-test.yml
+    with:
+      name: staging-dss-v024-utm_implementation_us
+      script: |
+        export DSS_IMAGE=interuss/dss:v0.24.0
+        export CONFIG_NAME=configurations.dev.utm_implementation_us
+        cd monitoring/uss_qualifier
+        make test
+
+  message_signing:
+    needs: build
+    uses: ./.github/workflows/monitoring-test.yml
+    with:
+      name: staging-dss-v024-message_signing
+      script: |
+        export DSS_IMAGE=interuss/dss:v0.24.0
+        export CONFIG_NAME=configurations.dev.message_signing
+        cd monitoring/uss_qualifier
+        make test
+
+  uspace:
+    needs: build
+    uses: ./.github/workflows/monitoring-test.yml
+    with:
+      name: staging-dss-v024-uspace
+      script: |
+        export DSS_IMAGE=interuss/dss:v0.24.0
+        export CONFIG_NAME=configurations.dev.uspace
+        cd monitoring/uss_qualifier
+        make test
