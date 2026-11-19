@@ -61,7 +61,7 @@ jobs:
       name: staging-dss-v024-utm_implementation_us
       script: |
         export DSS_IMAGE=interuss/dss:v0.24.0
-        export CONFIG_NAME=configurations.dev.utm_implementation_us
+        export CONFIG_NAME=configurations.dev.utm_implementation_us.environments.local.test_1
         cd monitoring/uss_qualifier
         make test
 
