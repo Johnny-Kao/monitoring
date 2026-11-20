@@ -205,7 +205,7 @@ class OIRCircleOverlap(TestScenario):
                     # against any particular polygon approximation or index.
                     if abs(overlap - self.TRUE_OVERLAP_M) > self.OVERLAP_TOLERANCE_M:
                         continue
-    
+
                     fixtures.append(
                         (
                             self._circle(oir_center, self.OIR_RADIUS_M),
@@ -219,7 +219,7 @@ class OIRCircleOverlap(TestScenario):
                     )
                     if len(fixtures) == 4:
                         return fixtures
-    
+
         raise FixtureUnavailable(
             f"PlanningAreaResource {bounds} cannot fit four true-circle "
             "S2 corner overlap cases"
